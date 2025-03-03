@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Configuração</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #121212;
+      color: white;
+      padding: 20px;
+    }
+    #channels {
+      margin: 20px 0;
+    }
+    button {
+      background: #ff5722;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    a {
+      color: #ff5722;
+      text-decoration: none;
+      margin-top: 20px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <h1>Configuração do Bot</h1>
+  <div id="login">
+    <a href="/auth/twitch">Login via Twitch</a>
+  </div>
+  <h2>Canais Monitorados</h2>
+  <ul id="channels"></ul>
+  <input type="text" id="channelInput" placeholder="Adicionar canal">
+  <button onclick="addChannel()">Adicionar</button>
+  <br>
+  <!-- Cria links para o overlay de cada canal -->
+  <div id="overlays"></div>
+  
+  <script>
+    async function loadChannels() {
+      const res = await fetch('/config.json');
+      const data = await res.json();
+      document.getElementById('channels').innerHTML = data.channels.map(ch => `<li>${ch} <button onclick="removeChannel('${ch}')">Remover</button></li>`).join('');
+      
+      // Cria links para o overlay, passando o parâmetro "channel" na URL
+      const overlaysDiv = document.getElementById('overlays');
+      overlaysDiv.innerHTML = data.channels.map(ch => `<a href="overlay.html?channel=${ch}" target="_blank">Overlay para ${ch}</a>`).join(' | ');
+    }
+    
+    async function addChannel() {
+      const input = document.getElementById('channelInput');
+      const channel = input.value.trim();
+      if (!channel) return;
+      // Obtém a lista atual de canais
+      const listItems = document.getElementById('channels').getElementsByTagName('li');
+      let channels = [];
+      for (let li of listItems) {
+        channels.push(li.textContent.replace(' Remover', '').trim());
+      }
+      if (!channels.includes(channel)) {
+        channels.push(channel);
+      }
+      const res = await fetch('/update-channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channels })
+      });
+      if (res.ok) loadChannels();
+      input.value = '';
+    }
+    
+    async function removeChannel(channel) {
+      const listItems = document.getElementById('channels').getElementsByTagName('li');
+      let channels = [];
+      for (let li of listItems) {
+        let ch = li.textContent.replace(' Remover', '').trim();
+        if (ch !== channel) channels.push(ch);
+      }
+      const res = await fetch('/update-channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channels })
+      });
+      if (res.ok) loadChannels();
+    }
+    
+    loadChannels();
+  </script>
+</body>
+</html>

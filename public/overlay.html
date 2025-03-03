@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overlay de Música com Fila</title>
+  <style>
+    /* Ocupa toda a tela */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: black;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    #overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1000;
+    }
+    /* O player ocupa toda a tela */
+    #player {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    /* Painel de fila, exibido sobre o player */
+    #queueContainer {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      color: white;
+      max-height: 50vh;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    #queueContainer h2 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+    }
+    #queueList {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    #queueList li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <iframe id="player" allow="autoplay; fullscreen"></iframe>
+    <div id="queueContainer">
+      <h2>Próximas músicas</h2>
+      <ul id="queueList"></ul>
+    </div>
+  </div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Captura o parâmetro "channel" da URL e converte para lowercase
+    const params = new URLSearchParams(window.location.search);
+    const channel = params.get('channel') ? params.get('channel').toLowerCase() : '';
+    console.log('Overlay conectado para o canal:', channel);
+    const socket = io({ query: { channel }});
+    
+    const overlay = document.getElementById('overlay');
+    const player = document.getElementById('player');
+    const queueList = document.getElementById('queueList');
+    
+    // Ao receber um comando para tocar uma música
+    socket.on('playSong', (song) => {
+      overlay.style.display = 'block';
+      player.src = `https://www.youtube-nocookie.com/embed/${song.videoId}?autoplay=1&controls=0&showinfo=0&rel=0&modestbranding=1`;
+    });
+    
+    // Atualiza a fila de músicas
+    socket.on('queueUpdated', (queue) => {
+      queueList.innerHTML = '';
+      // Se a fila estiver vazia, oculta o overlay e limpa o player
+      if (queue.length === 0) {
+        overlay.style.display = 'none';
+        player.src = '';
+      } else {
+        // A música em reprodução é o índice 0; a fila mostrará as próximas
+        for (let i = 1; i < queue.length; i++) {
+          const li = document.createElement('li');
+          li.textContent = `${i}. ${queue[i].title}`;
+          queueList.appendChild(li);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
